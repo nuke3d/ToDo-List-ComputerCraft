@@ -20,6 +20,8 @@ function textCol(color)
     end
 end
 
+local todo = {} -- Initialize the 'todo' table as an empty table
+
 function openTODO()
     local file = fs.open("todolist", "r")
     if file ~= nil then
@@ -107,9 +109,6 @@ function removeCompletedTasks()
     todo = newTodo  -- Update the 'todo' table with the filtered list
     saveTODO()
 end
-
--- Initialize todo list
-local todo = {}
 
 openTODO()
 
