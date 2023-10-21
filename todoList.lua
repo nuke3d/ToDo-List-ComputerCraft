@@ -98,19 +98,22 @@ function addItem()
 end
 
 function removeCompletedTasks()
-    local i = 1
-    while i <= #todo do
-        if todo[i].completed then
-            table.remove(todo, i)
-        else
-            i = i + 1
+    local newTodo = {}  -- Create a new table for non-completed tasks
+    for i = 1, #todo do
+        if not todo[i].completed then
+            table.insert(newTodo, todo[i])
         end
     end
+    todo = newTodo  -- Update the 'todo' table with the filtered list
     saveTODO()
 end
 
 -- Initialize todo list
 local todo = {}
+
+-- Corrected line for initializing the 'todo' table
+local todo = {}
+
 openTODO()
 
 -- Initial printing
@@ -146,10 +149,10 @@ while true do
             todo[itm].inProgress = false
             saveTODO()
         end
-    end
 
-    term.clear()
-    printButtons()
-    term.setCursorPos(1, 1)
-    displayPage(currentPage)
+        term.clear()
+        printButtons()
+        term.setCursorPos(1, 1)
+        displayPage(currentPage)
+    end
 end
