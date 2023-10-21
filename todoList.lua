@@ -111,9 +111,6 @@ end
 -- Initialize todo list
 local todo = {}
 
--- Corrected line for initializing the 'todo' table
-local todo = {}
-
 openTODO()
 
 -- Initial printing
