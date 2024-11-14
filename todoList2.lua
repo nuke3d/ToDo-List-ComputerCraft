@@ -1,35 +1,26 @@
 shell.run("label set ToDo")
 local periList = peripheral.getNames()
 local mon = term.native()
-local isMonitorAvailable = false
-
 for i = 1, #periList do
     if peripheral.getType(periList[i]) == "monitor" then
         mon = peripheral.wrap(periList[i])
-        isMonitorAvailable = true
         print("Monitor wrapped as... " .. periList[i])
     end
 end
 
+term.redirect(mon)
+
 local currentPage = 1
 local width, height = mon.getSize()
-local line = height - 5 -- Ajustado para novos botões
+local line = height - 3
 
 function textCol(color)
     if mon.isColor() then
         term.setTextColor(color)
-        mon.setTextColor(color)
     end
 end
 
-function dualWrite(x, y, text)
-    term.setCursorPos(x, y)
-    term.write(text)
-    mon.setCursorPos(x, y)
-    mon.write(text)
-end
-
-local todo = {}
+local todo = {} -- Initialize the 'todo' table as an empty table
 
 function openTODO()
     local file = fs.open("todolist", "r")
@@ -40,6 +31,7 @@ function openTODO()
             todo[1] = {text = "Make a todo list", status = "Not Completed"}
         else
             todo = textutils.unserialize(data)
+            -- Ensure "status" is set for older tasks
             for _, task in pairs(todo) do
                 task.status = task.status or "Not Completed"
             end
@@ -57,9 +49,6 @@ end
 
 function displayPage(p)
     textCol(colors.white)
-    mon.clear()
-    mon.setCursorPos(1, 2)
-    term.clear()
     term.setCursorPos(1, 2)
     for i = (1 + (p - 1) * line), (p * line) do
         if todo[i] ~= nil then
@@ -71,80 +60,90 @@ function displayPage(p)
                 textColor = colors.orange
             end
             textCol(textColor)
-            dualWrite(1, i - (p - 1) * line + 1, "[" .. status .. "] " .. todo[i].text)
+            term.write("[" .. status .. "] ")
+            textCol(colors.gray)
+            print(" " .. todo[i].text)
         end
     end
 end
 
 function printButtons()
     local buttonY = height - 1
-    local function drawButton(x, text, color)
-        textCol(color)
-        mon.setCursorPos(x, buttonY)
-        mon.write("[" .. text .. "]")
-        term.setCursorPos(x, buttonY)
-        term.write("[" .. text .. "]")
-    end
 
-    drawButton(2, "Add Item", colors.green)
-    drawButton(15, "Remove Completed", colors.red)
-    drawButton(width - 13, "Cycle Page", colors.yellow)
+    -- Add Item Button
+    term.setCursorPos(2, buttonY)
+    textCol(colors.green)
+    term.write("[ Add Item ]")
+
+    -- Remove Completed Button
+    term.setCursorPos(20, buttonY)
+    textCol(colors.red)
+    term.write("[ Remove Completed ]")
+
+    -- Cycle Page Button
+    term.setCursorPos(width - 14, buttonY)
+    textCol(colors.yellow)
+    term.write("[ Cycle Page ]")
 end
 
 function addItem()
     term.clear()
-    mon.clear()
     term.setCursorPos(2, 2)
-    mon.setCursorPos(2, 2)
-    dualWrite(2, 2, "Please enter a new item:")
+    print("Please enter a new item:")
     local input = read()
     local newItem = {text = input, status = "Not Completed"}
+
     table.insert(todo, 1, newItem)
     saveTODO()
-    dualWrite(2, 2, "Item added!")
+
+    term.clear()
+    term.setCursorPos(2, 2)
+    textCol(colors.white)
+    print("Thanks! Item added.")
     os.sleep(2)
 end
 
 function removeCompletedTasks()
-    local newTodo = {}
+    local newTodo = {}  -- Create a new table for non-completed tasks
     for i = 1, #todo do
         if todo[i].status ~= "Completed" then
             table.insert(newTodo, todo[i])
         end
     end
-    todo = newTodo
+    todo = newTodo  -- Update the 'todo' table with the filtered list
     saveTODO()
 end
 
 openTODO()
 
+-- Initial printing
 term.clear()
-mon.clear()
 printButtons()
 displayPage(1)
 
 while true do
-    local event, side, x, y
-    if isMonitorAvailable then
-        event, side, x, y = os.pullEvent("monitor_touch")
+    local event, but, x, y
+
+    if mon == term.native() then
+        event, but, x, y = os.pullEvent("mouse_click")
     else
-        event, button, x, y = os.pullEvent("mouse_click")
+        event, _, x, y = os.pullEvent("monitor_touch")
     end
 
     if y == height - 1 then
-        if x >= 2 and x <= 11 then
+        if x <= 13 then
             addItem()
-        elseif x >= 15 and x <= 30 then
+        elseif x >= 20 and x <= 36 then
             removeCompletedTasks()
-        elseif x >= width - 13 then
+        elseif x >= width - 14 then
             if currentPage >= #todo / line then
                 currentPage = 1
             else
                 currentPage = currentPage + 1
             end
         end
-    elseif y >= 2 and y <= height - 5 then
-        local itm = (currentPage - 1) * line + y - 2
+    elseif y >= 2 and y <= height - 3 then
+        local itm = (currentPage - 1) * line + y - 1
         if todo[itm] ~= nil then
             if todo[itm].status == "Not Completed" then
                 todo[itm].status = "In Progress"
@@ -155,7 +154,10 @@ while true do
             end
             saveTODO()
         end
+
+        term.clear()
+        printButtons()
+        term.setCursorPos(1, 1)
+        displayPage(currentPage)
     end
-    printButtons()
-    displayPage(currentPage)
 end
